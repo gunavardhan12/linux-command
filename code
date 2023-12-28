@@ -1,0 +1,147 @@
+#!/bin/bash
+
+display_manual() {
+    echo "internsctl(1) - Custom Linux Command"
+    echo
+    echo "NAME"
+    echo "    internsctl - perform various system operations"
+    echo
+    echo "SYNOPSIS"
+    echo "    internsctl [OPTION]... COMMAND [ARG]..."
+    echo
+    echo "DESCRIPTION"
+    echo "    internsctl is a custom Linux command for performing system operations."
+    echo
+    echo "OPTIONS"
+    echo "    --help     display this help and exit"
+    echo "    --version  output version information and exit"
+    echo
+    echo "COMMANDS"
+    echo "    cpu        get CPU information"
+    echo "    memory     get memory information"
+    echo "    user       manage users"
+    echo "    file       get information about a file"
+}
+
+
+display_help() {
+    echo "Usage: internsctl [OPTION]... COMMAND [ARG]..."
+    echo
+    echo "Options:"
+    echo "  --help        Display this help message"
+    echo "  --version     Display version information"
+    echo
+    echo "Commands:"
+    echo "  cpu getinfo           Get CPU information"
+    echo "  memory getinfo        Get memory information"
+    echo "  user create <username> Create a new user"
+    echo "  user list             List all regular users"
+   echo "  user list --sudo-only List users with sudo permissions"
+    echo "  file getinfo <file>   Get information about a file"
+}
+
+
+display_version() {
+    echo "internsctl v0.1.0"
+}
+
+
+get_cpu_info() {
+    lscpu
+}
+
+
+get_memory_info() {
+    free
+}
+create_user() {
+    if [ -z "$1" ]; then
+        echo "Error: Username not provided."
+        exit 1
+    fi
+    sudo useradd -m "$1"
+    echo "User '$1' created successfully."
+}
+
+
+list_users() {
+    if [ "$1" = "--sudo-only" ]; then
+        getent passwd | cut -d: -f1,3,4 | awk -F: '$2 >= 1000 && $3 == 0 {print $1}'
+    else
+        getent passwd | cut -d: -f1,3,4 | awk -F: '$2 >= 1000 {print $1}'
+    fi
+}
+
+
+get_file_info() {
+    local file=$1
+
+    if [ ! -e "$file" ]; then
+        echo "Error: File '$file' not found."
+        exit 1
+    fi
+
+    local size=$(stat -c %s "$file")
+    local permissions=$(stat -c %A "$file")
+    local owner=$(stat -c %U "$file")
+    local last_modified=$(stat -c %y "$file")
+
+    echo "File: $file"
+    echo "Access: $permissions"
+    echo "Size(B): $size"
+    echo "Owner: $owner"
+    echo "Modify: $last_modified"
+}
+
+
+case "$1" in
+    --help)
+ 	display_help
+        ;;
+    --version)
+	display_version
+        ;;
+    cpu)
+        shift
+	get_cpu_info
+        ;;
+    memory)
+	shift
+        get_memory_info
+        ;;
+    user)
+	shift
+	case "$1" in
+            create)
+                shift
+                create_user "$1"
+                ;;
+            list)
+                shift
+                list_users "$1"
+                ;;
+            *)
+              	echo "Error: Invalid user command."
+                exit 1
+                ;;
+        esac
+	;;
+    file)
+	shift
+	case "$1" in
+            getinfo)
+                shift
+                get_file_info "$1"
+                ;;
+            *)
+              	echo "Error: Invalid file command."
+                exit 1
+                ;;
+        esac
+	;;
+    *)
+      	echo "Error: Invalid command."
+        exit 1
+	;;
+esac
+
